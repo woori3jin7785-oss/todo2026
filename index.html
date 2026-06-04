@@ -253,31 +253,68 @@
 
   /* ── 모바일 반응형 ── */
   @media (max-width: 768px) {
-    .layout { flex-direction: column; padding: 10px; gap: 12px; }
-    .tmr-panel { width: 100%; position: static; max-height: 250px; }
-    .month-nav { flex-wrap: wrap; padding: 8px 10px 0; gap: 3px; }
-    .month-tab { padding: 5px 12px; font-size: 12px; }
-    .export-btn { padding: 5px 10px; font-size: 11px; }
+    .layout { flex-direction: column; padding: 8px; gap: 12px; }
+    .tmr-panel { width: 100%; position: static; max-height: 220px; }
+    .month-nav { flex-wrap: wrap; padding: 6px 8px 0; gap: 3px; }
+    .month-tab { padding: 5px 10px; font-size: 11px; }
+    .export-btn { padding: 4px 8px; font-size: 10px; }
+    .page-title { font-size: 13px; padding: 8px; }
 
-    /* 테이블 모바일 - 메모/우선순위 숨기고 핵심만 */
-    col.c-no     { width: 28px; }
-    col.c-date   { width: 72px; }
-    col.c-dow    { width: 30px; }
-    col.c-task   { width: auto; }
-    col.c-pri    { display: none; }
-    col.c-status { width: 80px; }
-    col.c-memo   { display: none; }
-    col.c-move   { width: 56px; }
+    /* 모바일: 테이블 숨기고 카드형으로 */
+    table, thead, tbody, tr, td, th { display: block; }
+    thead { display: none; }
 
-    thead th:nth-child(5),
-    thead th:nth-child(7),
-    tbody td:nth-child(5),
-    tbody td:nth-child(7) { display: none; }
+    .date-sep { display: none; }
 
-    td { padding: 4px 3px; font-size: 11px; }
-    td.cell-date { font-size: 11px; }
-    .page-title { font-size: 14px; padding: 10px; }
+    tr.todo-row-mobile {
+      margin-bottom: 4px;
+      border-radius: 6px;
+      overflow: hidden;
+    }
+
+    /* 날짜 셀 - 첫번째 행만 표시 */
+    td.cell-no { display: none; }
+    td.cell-date {
+      display: inline-block;
+      width: auto;
+      padding: 4px 8px;
+      font-size: 12px;
+      border-radius: 4px 0 0 0;
+    }
+    td.cell-dow {
+      display: inline-block;
+      width: auto;
+      padding: 4px 6px;
+      font-size: 12px;
+    }
+
+    /* 업무내용 - 전체 너비 */
+    td.cell-task {
+      display: block;
+      width: 100% !important;
+      padding: 5px 8px;
+      font-size: 12px;
+      border-top: none;
+    }
+    td.cell-task input {
+      font-size: 12px;
+      width: 100%;
+    }
+
+    /* 우선순위/완료/메모/이동 - 한 줄에 나란히 */
+    td:nth-child(5), td:nth-child(6), td:nth-child(7), td:nth-child(8) {
+      display: inline-block;
+      width: auto;
+      padding: 3px 4px;
+      font-size: 11px;
+      vertical-align: middle;
+    }
+    td:nth-child(5) select, td:nth-child(6) select { font-size: 10px; }
+    td:nth-child(7) input { font-size: 10px; width: 80px; }
+    td:nth-child(8) { padding: 3px 2px; }
     .move-btn { padding: 2px 5px; font-size: 10px; }
+
+    .add-row td { display: block; }
   }
 </style>
 </head>
