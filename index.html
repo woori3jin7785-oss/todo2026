@@ -648,20 +648,25 @@ function scrollToDay(m, day) {
 
 // ── 다음날 할일 패널 (Supabase 연동) ────────────────────────────
 function getTmrKey() {
+  // 오늘 날짜 기준 내일
   const today = new Date();
-  const m = cur, days = MDAYS[m];
-  let nextM = m, nextDay = 1;
   const todayM = today.getMonth()+1, todayD = today.getDate();
-  if (todayM === m && todayD <= days) {
-    if (todayD < days) { nextM = m; nextDay = todayD + 1; }
-    else { nextM = MONTHS[MONTHS.indexOf(m)+1] || m; nextDay = 1; }
-  } else {
-    nextM = m; nextDay = 2;
+  let nextM = todayM, nextDay = todayD + 1;
+  const daysInMonth = MDAYS[todayM] || 30;
+  if (nextDay > daysInMonth) {
+    const nextMonthIdx = MONTHS.indexOf(todayM) + 1;
+    nextM = MONTHS[nextMonthIdx] || todayM;
+    nextDay = 1;
   }
-  return { nextM, nextDay };
+  // 현재 보는 월이 오늘 월과 다르면 해당 월 기준
+  if (cur !== todayM) {
+    nextM = cur;
+    nextDay = 1;
+  }
+  return { nextM, nextDay, todayM, todayD };
 }
 
-// Supabase tomorrow 테이블 저장
+// Supabase tomorrow 저장 (idx=-1 사용)
 async function saveTmrToSupabase(nextM, nextDay, items) {
   const lsKey = `tmr_${nextM}_${nextDay}`;
   localStorage.setItem(lsKey, JSON.stringify(items));
@@ -685,23 +690,48 @@ async function loadTmrFromSupabase(nextM, nextDay) {
 }
 
 async function renderTomorrow() {
-  const { nextM, nextDay } = getTmrKey();
+  const { nextM, nextDay, todayM, todayD } = getTmrKey();
+
+  // 오늘 날짜에 해당하는 할일도 함께 표시 (전날 등록한 오늘치)
   const label = document.getElementById('tmrLabel');
   label.textContent = `${nextM}월 ${nextDay}일`;
 
   const body = document.getElementById('tmrBody');
   body.innerHTML = '<div style="padding:12px;text-align:center;color:#aaa;font-size:11px;">로딩중...</div>';
 
-  const items = await loadTmrFromSupabase(nextM, nextDay);
+  // 오늘 날짜 할일 (전날 등록해 놓은 것) 도 불러옴
+  const todayItems = await loadTmrFromSupabase(todayM, todayD);
+  const nextItems  = await loadTmrFromSupabase(nextM, nextDay);
 
   body.innerHTML = '';
-  items.forEach((text, i) => {
-    body.appendChild(makeTmrItem(nextM, nextDay, items, i, text));
+
+  // 오늘치 할일이 있으면 먼저 표시
+  if (todayItems.length > 0) {
+    const todayHdr = document.createElement('div');
+    todayHdr.style.cssText = 'font-size:10px;color:#888;padding:4px 8px 2px;font-weight:600;';
+    todayHdr.textContent = `오늘(${todayM}월 ${todayD}일) 할일`;
+    body.appendChild(todayHdr);
+    todayItems.forEach((text, i) => {
+      body.appendChild(makeTmrItem(todayM, todayD, todayItems, i, text, true));
+    });
+    const divider = document.createElement('div');
+    divider.style.cssText = 'border-top:1px solid #eee;margin:6px 0;';
+    body.appendChild(divider);
+  }
+
+  // 내일치 할일
+  const nextHdr = document.createElement('div');
+  nextHdr.style.cssText = 'font-size:10px;color:#888;padding:4px 8px 2px;font-weight:600;';
+  nextHdr.textContent = `내일(${nextM}월 ${nextDay}일) 할일`;
+  body.appendChild(nextHdr);
+
+  nextItems.forEach((text, i) => {
+    body.appendChild(makeTmrItem(nextM, nextDay, nextItems, i, text, false));
   });
 
   const addBtn = document.createElement('button');
   addBtn.className = 'tmr-add-btn';
-  addBtn.textContent = '+ 할일 추가';
+  addBtn.textContent = '+ 내일 할일 추가';
   addBtn.onclick = async () => {
     const cur2 = await loadTmrFromSupabase(nextM, nextDay);
     cur2.push('');
@@ -712,24 +742,29 @@ async function renderTomorrow() {
   body.appendChild(addBtn);
 }
 
-function makeTmrItem(nextM, nextDay, items, i, text) {
+function makeTmrItem(m, day, items, i, text, isToday) {
   const div = document.createElement('div');
   div.className = 'tmr-item';
+  if (isToday) div.style.background = '#FFF8E1';
 
   const inp = document.createElement('input');
   inp.type = 'text'; inp.placeholder = '할일 입력'; inp.value = text;
   inp.onchange = async () => {
-    const cur2 = await loadTmrFromSupabase(nextM, nextDay);
+    const cur2 = await loadTmrFromSupabase(m, day);
     cur2[i] = inp.value;
-    await saveTmrToSupabase(nextM, nextDay, cur2);
+    await saveTmrToSupabase(m, day, cur2);
   };
 
+  // 삭제 버튼 (완료/삭제)
   const del = document.createElement('button');
-  del.className = 'tmr-del'; del.textContent = '×';
+  del.className = 'tmr-del';
+  del.title = '완료 후 삭제';
+  del.innerHTML = isToday ? '✓' : '×';
+  del.style.color = isToday ? '#2e7d32' : '#ccc';
   del.onclick = async () => {
-    const cur2 = await loadTmrFromSupabase(nextM, nextDay);
+    const cur2 = await loadTmrFromSupabase(m, day);
     cur2.splice(i, 1);
-    await saveTmrToSupabase(nextM, nextDay, cur2);
+    await saveTmrToSupabase(m, day, cur2);
     renderTomorrow();
   };
 
@@ -886,7 +921,7 @@ function exportXlsx() {
 
   XLSX.writeFile(wb, '2026년_업무투두리스트.xlsx', {cellStyles: true, bookType:'xlsx'});
   toast('엑셀 파일이 저장되었습니다.');
-} 
+}
 </script>
 </body>
 </html>
